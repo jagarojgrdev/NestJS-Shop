@@ -1,4 +1,4 @@
-# TesloDB API
+# ShopDB API
 
 1. Clonar proyecto
 
