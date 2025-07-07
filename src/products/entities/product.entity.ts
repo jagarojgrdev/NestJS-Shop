@@ -1,10 +1,21 @@
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import {
+  BeforeInsert,
+  BeforeUpdate,
+  Column,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { ProductImage } from './product-image.entity';
 
-//Asignamos a Product como entity de typeorm y asigname qu sea un tabla (Lo importamos tbn en el module)
+// Podemos renombrar la tabla especificandole el nombre.
+//  En caso de que renombremos sobre una tabla ya creda, habría que eliminarla y volver a crearla
+// @Entity({ name: 'products' })
+// Asignamos a Product como entity de typeorm y asigname que sea un tabla (Lo importamos tbn en el module)
 @Entity()
 export class Product {
   // Generamos clave primaria
-  @PrimaryColumn('uuid')
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   //Generamos campo
@@ -13,10 +24,10 @@ export class Product {
   })
   title: string;
 
-  @Column('numeric', {
+  @Column('float', {
     default: 0,
   })
-  price: string;
+  price: number;
 
   @Column({
     type: 'text',
@@ -42,4 +53,40 @@ export class Product {
 
   @Column('text')
   gender: string;
+
+  @Column('text', {
+    array: true,
+    default: [],
+  })
+  tags: string[];
+
+  // Hacemos relación de uno a muchos
+  @OneToMany(() => ProductImage, (productImage) => productImage.product, {
+    // Sirve para que si borramos un producto, borre tambien las imagenes asociadas
+    cascade: true,
+    // Srive para cargar las relaciones automaticamente
+    eager: true,
+  })
+  images?: ProductImage[];
+
+  //Modifica slug antes de insertar
+  @BeforeInsert()
+  checkSlugInsert() {
+    if (!this.slug) {
+      this.slug = this.title;
+    }
+    this.slug = this.slug
+      .toLocaleLowerCase()
+      .replaceAll(' ', '_')
+      .replaceAll("'", '');
+  }
+
+  //Modifica slug antes de actualizar
+  @BeforeUpdate()
+  checkSlugUpdate() {
+    this.slug = this.slug
+      .toLocaleLowerCase()
+      .replaceAll(' ', '_')
+      .replaceAll("'", '');
+  }
 }

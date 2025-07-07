@@ -40,4 +40,14 @@ export class CreateProductDto {
   // validamos que conetnga alguno de los valores el array
   @IsIn(['men', 'women', 'kid', 'unisex'])
   gender: string;
+
+  @IsString({ each: true })
+  @IsOptional()
+  @IsArray()
+  tags: string[];
+
+  @IsString({ each: true })
+  @IsOptional()
+  @IsArray()
+  images: string[];
 }
