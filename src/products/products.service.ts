@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -12,6 +6,8 @@ import { DataSource, Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
 import { PaginationDto } from 'src/common/dtos/pagination.dto';
 import { Product, ProductImage } from './entities';
+import { ExceptionService } from 'src/common/services/exception.service';
+import { User } from 'src/auth/entities/user.entity';
 
 @Injectable()
 export class ProductsService {
@@ -20,6 +16,7 @@ export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+    private readonly exceptionService: ExceptionService,
 
     //Cargamos la tabla imagenes
     @InjectRepository(ProductImage)
@@ -28,7 +25,8 @@ export class ProductsService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async create(createProductDto: CreateProductDto) {
+  //Recogemos usuario
+  async create(createProductDto: CreateProductDto, user: User) {
     try {
       //Destructuramos la data
       const { images = [], ...productDetails } = createProductDto;
@@ -39,6 +37,7 @@ export class ProductsService {
         images: images.map((image) =>
           this.productImageRepository.create({ url: image }),
         ),
+        user,
       });
 
       //Guardamos en DB
@@ -47,7 +46,7 @@ export class ProductsService {
       return product;
       // Controlamos errores
     } catch (error) {
-      this.handleDBExceptions(error);
+      this.exceptionService.handleException(error);
     }
   }
 
@@ -112,7 +111,7 @@ export class ProductsService {
     };
   }
 
-  async update(id: string, updateProductDto: UpdateProductDto) {
+  async update(id: string, updateProductDto: UpdateProductDto, user: User) {
     const { images, ...productDetails } = updateProductDto;
 
     const product = await this.productRepository.preload({
@@ -141,6 +140,9 @@ export class ProductsService {
         );
       }
 
+      //Indicamos que se guarde el usuario
+      product.user = user;
+
       // Guardamos los cambios
       await queryRunner.manager.save(product);
 
@@ -157,7 +159,7 @@ export class ProductsService {
       await queryRunner.rollbackTransaction();
       await queryRunner.release();
 
-      this.handleDBExceptions(error);
+      this.exceptionService.handleException(error);
     }
   }
 
@@ -171,27 +173,27 @@ export class ProductsService {
     return;
   }
 
-  private handleDBExceptions(error: any) {
-    // Asegura que error no es null, ni un tipo primitivo como string, number, etc.
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      // Comprueba que la propiedad code existe
-      'code' in error &&
-      // Accede a code de forma segura, haciendo un cast a un objeto genérico.
-      // Es una forma de decirle a TypeScript    "Este es un objeto con claves string y valores de tipo desconocido".
-      (error as Record<string, unknown>)['code'] === '23505'
-    ) {
-      throw new BadRequestException(
-        (error as Record<string, unknown>)['detail'],
-      );
-    }
-    this.logger.error(error);
+  // private handleDBExceptions(error: any) {
+  //   // Asegura que error no es null, ni un tipo primitivo como string, number, etc.
+  //   if (
+  //     typeof error === 'object' &&
+  //     error !== null &&
+  //     // Comprueba que la propiedad code existe
+  //     'code' in error &&
+  //     // Accede a code de forma segura, haciendo un cast a un objeto genérico.
+  //     // Es una forma de decirle a TypeScript    "Este es un objeto con claves string y valores de tipo desconocido".
+  //     (error as Record<string, unknown>)['code'] === '23505'
+  //   ) {
+  //     throw new BadRequestException(
+  //       (error as Record<string, unknown>)['detail'],
+  //     );
+  //   }
+  //   this.logger.error(error);
 
-    throw new InternalServerErrorException(
-      'Unexpected error - Check Server Logs',
-    );
-  }
+  //   throw new InternalServerErrorException(
+  //     'Unexpected error - Check Server Logs',
+  //   );
+  // }
 
   async deleteAllProducts() {
     const query = this.productRepository.createQueryBuilder('product');
@@ -199,7 +201,7 @@ export class ProductsService {
     try {
       return await query.delete().execute();
     } catch (error) {
-      this.handleDBExceptions(error);
+      this.exceptionService.handleException(error);
     }
   }
 }

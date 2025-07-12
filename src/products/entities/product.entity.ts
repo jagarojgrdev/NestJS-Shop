@@ -3,10 +3,12 @@ import {
   BeforeUpdate,
   Column,
   Entity,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { ProductImage } from './product-image.entity';
+import { User } from 'src/auth/entities/user.entity';
 
 // Podemos renombrar la tabla especificandole el nombre.
 //  En caso de que renombremos sobre una tabla ya creda, habría que eliminarla y volver a crearla
@@ -68,6 +70,11 @@ export class Product {
     eager: true,
   })
   images?: ProductImage[];
+
+  @ManyToOne(() => User, (user) => user.product, {
+    eager: true,
+  })
+  user: User;
 
   //Modifica slug antes de insertar
   @BeforeInsert()
