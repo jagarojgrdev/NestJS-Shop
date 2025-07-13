@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsArray,
   IsInt,
@@ -10,10 +11,16 @@ import {
 } from 'class-validator';
 
 export class CreateProductDto {
+  @ApiProperty({
+    description: 'Product title',
+    nullable: false,
+    minLength: 1,
+  })
   @IsString()
   @MinLength(1)
   title: string;
 
+  //añadir properties de api en demas casos
   @IsNumber()
   @IsPositive()
   @IsOptional()
